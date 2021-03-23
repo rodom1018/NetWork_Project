@@ -12,7 +12,7 @@ def intro():
     print("5) exit")
 
 
-serverName = "127.30.1.27"
+serverName = "nsl2.cau.ac.kr"
 serverPort = 34744
 
 
@@ -50,6 +50,7 @@ while True:
         # pressed 5
         clientSocket.sendto(send_message.encode(), (serverName, serverPort))
         print("bye bye ~")
+        clientSocket.close()
         break
     elif (send_message == "1") | (send_message == "2"):
         # pressed 1, 2
@@ -69,7 +70,9 @@ while True:
         print()
     except timeout:
         print("sever has downed ! bye bye ~")
+        clientSocket.close()
         break
     except ConnectionResetError:
         print("sever has downed ! bye bye ~")
+        clientSocket.close()
         break

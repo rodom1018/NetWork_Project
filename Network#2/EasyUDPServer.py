@@ -50,4 +50,5 @@ try:
 except KeyboardInterrupt:
     # reacting to ctrl+c
     print("server down! ")
+    serverSocket.close()
     exit()

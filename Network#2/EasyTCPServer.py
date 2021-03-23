@@ -53,6 +53,7 @@ try:
             connectionSocket.send(time_sentence.encode())
 except KeyboardInterrupt:
     # when pressed ctrl+c on server
+    serverSocket.close()
     connectionSocket.close()
     print("server down ! ")
     exit()
