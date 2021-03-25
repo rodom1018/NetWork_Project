@@ -8,13 +8,21 @@ start_time = time.time()
 serverPort = 24744
 serverSocket = socket(AF_INET, SOCK_STREAM)
 
-serverSocket.bind(("", serverPort))
-serverSocket.listen(1)
-(connectionSocket, addr) = serverSocket.accept()
-connectionSocket.settimeout(1)
-print("The server is ready to receive on port 24744")
+try:
+    # when server downed even before first connection with client(no connectionsocket)
+    serverSocket.bind(("nsl2.cau.ac.kr", serverPort))
+    serverSocket.listen(1)
+    print("The server is ready to receive on port 24744")
+    (connectionSocket, addr) = serverSocket.accept()
+    connectionSocket.settimeout(1)
+except KeyboardInterrupt:
+    serverSocket.close()
+    print("server closed!")
+    exit()
+
 
 try:
+
     while True:
         try:
             sentence = connectionSocket.recv(1024).decode()
@@ -55,5 +63,5 @@ except KeyboardInterrupt:
     # when pressed ctrl+c on server
     serverSocket.close()
     connectionSocket.close()
-    print("server down ! ")
+    print("server closed!")
     exit()

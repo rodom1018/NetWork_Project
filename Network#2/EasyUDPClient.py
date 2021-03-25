@@ -17,8 +17,6 @@ serverPort = 34744
 
 
 clientSocket = socket(AF_INET, SOCK_DGRAM)
-clientSocket.bind((serverName, 0))
-
 # wait reply 5 seconds from server, if message does not come, client thinks server has downed.
 clientSocket.settimeout(5)
 

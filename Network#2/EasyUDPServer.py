@@ -5,7 +5,7 @@ import time
 start_time = time.time()
 serverPort = 34744
 serverSocket = socket(AF_INET, SOCK_DGRAM)
-serverSocket.bind(("", serverPort))
+serverSocket.bind(("nsl2.cau.ac.kr", serverPort))
 print("The server is ready to receive on port 34744")
 
 # to react to ctrl+c , serverSocket.recvfrom waits forever .

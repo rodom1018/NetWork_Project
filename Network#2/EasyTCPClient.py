@@ -14,11 +14,11 @@ def intro():
 
 serverName = "nsl2.cau.ac.kr"
 serverPort = 24744
+server_address = (serverName, serverPort)
 
 try:
     clientSocket = socket(AF_INET, SOCK_STREAM)
-    clientSocket.bind((serverName, 0))
-    clientSocket.connect((serverName, serverPort))
+    clientSocket.connect(server_address)
 except ConnectionRefusedError:
     # if server is off, and client connects to server.
     print("server didn't turned on! bye bye ~")
@@ -66,6 +66,10 @@ while True:
         clientSocket.send(send_message.encode())
         modifiedSentence = clientSocket.recv(1024)
         receive_time = time.time() * 1000.0
+
+        if modifiedSentence.decode() == "":
+            raise ConnectionResetError
+
         print("Reply From Server : ", modifiedSentence.decode())
         print("Response time : {} ms".format(receive_time - send_time))
         print()
