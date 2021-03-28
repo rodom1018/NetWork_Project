@@ -12,7 +12,7 @@ def intro():
     print("5) exit")
 
 
-serverName = "172.30.1.27"
+serverName = "nsl2.cau.ac.kr"
 serverPort = 24744
 server_address = (serverName, serverPort)
 

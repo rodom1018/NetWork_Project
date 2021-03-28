@@ -3,7 +3,7 @@ from socket import *
 import time
 import threading
 
-
+# if there exists connectionSocket, serverSocket
 def TwoSocketClose(serverSocket, connectionSocket):
     serverSocket.close()
     connectionSocket.close()
@@ -11,12 +11,14 @@ def TwoSocketClose(serverSocket, connectionSocket):
     exit()
 
 
+# if there only exist serverSocket
 def OneSocketClose(ServerSocket):
     serverSocket.close()
     print("server closed!")
     exit()
 
 
+# thread function.
 def handle_client(connectionSocket, addr):
     global number_of_client
     global my_client_num
@@ -25,7 +27,9 @@ def handle_client(connectionSocket, addr):
     my_client_num += 1
 
     print(
-        f"Client {my_client_num} connected. Number of connected clients = {number_of_client} ."
+        "Client {} connected. Number of connected clients = {}".format(
+            my_client_num, number_of_client
+        )
     )
 
     while True:
@@ -64,30 +68,36 @@ def handle_client(connectionSocket, addr):
             time_sentence = " run time ={}:{}:{}".format(hour, minute, second)
             connectionSocket.send(time_sentence.encode())
     print(
-        f"Client {my_client_num} disconnected. Number of connected clients = {number_of_client}"
+        "Client {} disconnected. Number of connected clients = {}".format(
+            my_client_num, number_of_client
+        )
     )
 
 
 ############################
 ### start! main funciton ###
 ############################
+
 # to measure how much time server is running.
 start_time = time.time()
 alarm_time = 60
 
+# number of clinents.
 number_of_client = 0
 my_client_num = 0
 
+# initial setting
 serverPort = 24744
 serverSocket = socket(AF_INET, SOCK_STREAM)
 serverSocket.settimeout(0.5)
 
 try:
     # when server downed even before first connection with client(no connectionsocket)
-    serverSocket.bind(("172.30.1.27", serverPort))
+    serverSocket.bind(("nsl2.cau.ac.kr", serverPort))
     serverSocket.listen(1)
     print("The server is ready to receive on port 24744")
 except KeyboardInterrupt:
+    # pressed ctrl+c
     OneSocketClose(serverSocket)
 
 flag = 1
@@ -95,8 +105,9 @@ flag = 1
 try:
     while True:
         try:
+            # every 60 seconds, it alrams.
             if time.time() - start_time >= alarm_time:
-                print(f"[Alarm] Number of Client = {number_of_client}")
+                print("[Alarm] Number of Client = {}".format(number_of_client))
                 alarm_time += 60
 
             (connectionSocket, addr) = serverSocket.accept()
@@ -104,8 +115,9 @@ try:
             continue
 
         flag = 0
-        connectionSocket.settimeout(1)
+        connectionSocket.settimeout(0.7)
         thread = threading.Thread(target=handle_client, args=(connectionSocket, addr))
+        thread.setDaemon(True)
         thread.start()
 except KeyboardInterrupt:
     # when pressed ctrl+c on server

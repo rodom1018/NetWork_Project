@@ -2,10 +2,8 @@
 from socket import *
 import time
 import select
-import queue
-from operator import eq
 
-
+# converting message, or make message (message for client)
 def convertmessage(write_socket, sentence):
     if sentence[0] == "1":
         # when pressed 1
@@ -44,8 +42,9 @@ serverPort = 24744
 number_of_client = 0
 my_client_num = 0
 
+# initial settings
 serverSocket = socket(AF_INET, SOCK_STREAM)
-serverSocket.bind(("172.30.1.27", serverPort))
+serverSocket.bind(("nsl2.cau.ac.kr", serverPort))
 serverSocket.listen(1)
 print("The server is ready to receive on port 24744")
 temporary_socket = socket(AF_INET, SOCK_STREAM)
@@ -58,19 +57,23 @@ addresses = {}
 
 try:
     while True:
+        # alarm every 60 seconds
         if time.time() - start_time > alarm_time:
-            print(f"[Alarm] Number of Client = {number_of_client}")
+            print("[Alarm] Number of Client = {}".format(number_of_client))
             alarm_time += 60
         try:
+            # if there is any terminated socket, remove from the list. (not to read terminated socket)
             read_socket_list.remove(temporary_socket)
             del addresses[temporary_socket]
-            print(addresses)
         except:
             pass
+
+        # select function
         conn_read_socket, conn_write_socket, conn_except_socket = select.select(
             read_socket_list, write_socket_list, [], 0.5
         )
 
+        # reading section(detect any changes)
         for conn_socket in conn_read_socket:
             if conn_socket == serverSocket:
                 (connectionSocket, addr) = serverSocket.accept()
@@ -79,7 +82,9 @@ try:
                 number_of_client += 1
                 my_client_num += 1
                 print(
-                    f"Client {my_client_num} connected. Number of connected clients = {number_of_client} ."
+                    "Client {} connected. Number of connected clients = {}.".format(
+                        my_client_num, number_of_client
+                    )
                 )
                 connectionSocket.setblocking(0)
                 read_socket_list.append(connectionSocket)
@@ -89,7 +94,9 @@ try:
                 if sentence == " " or sentence == "5":
                     number_of_client -= 1
                     print(
-                        f"Client {my_client_num} disconnected. Number of connected clients = {number_of_client}"
+                        "Client {} disconnected. Number of connected clients = {}".format(
+                            my_client_num, number_of_client
+                        )
                     )
                     temporary_socket = conn_socket
                     break
@@ -97,6 +104,7 @@ try:
                 if conn_socket not in write_socket_list:
                     write_socket_list.append(conn_socket)
 
+        # writing section(detect any changes)
         for write_socket in conn_write_socket:
             # convert message and send to client
             sentence = messages.get(write_socket)
@@ -108,9 +116,15 @@ try:
             write_socket_list.remove(write_socket)
 
 except KeyboardInterrupt:
+    # ctrl+c on server program
     serverSocket.close()
-    conn_socket.close()
     temporary_socket.close()
+
+    # deal with situation when conn_socket doesn't exist.
+    try:
+        conn_socket.close()
+    except:
+        pass
 
     print("server closed!")
     exit()
