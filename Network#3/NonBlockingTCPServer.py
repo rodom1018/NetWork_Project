@@ -54,6 +54,7 @@ read_socket_list = [
 write_socket_list = []
 messages = {}
 addresses = {}
+client_num = {}
 
 try:
     while True:
@@ -81,6 +82,7 @@ try:
 
                 number_of_client += 1
                 my_client_num += 1
+                client_num[connectionSocket] = my_client_num
                 print(
                     "Client {} connected. Number of connected clients = {}.".format(
                         my_client_num, number_of_client
@@ -91,11 +93,12 @@ try:
 
             else:
                 sentence = conn_socket.recv(1024).decode()
-                if sentence == " " or sentence == "5":
+
+                if sentence == "5" or sentence == " ":
                     number_of_client -= 1
                     print(
                         "Client {} disconnected. Number of connected clients = {}".format(
-                            my_client_num, number_of_client
+                            client_num[conn_socket], number_of_client
                         )
                     )
                     temporary_socket = conn_socket
@@ -108,9 +111,12 @@ try:
         for write_socket in conn_write_socket:
             # convert message and send to client
             sentence = messages.get(write_socket)
-            new_sentence = convertmessage(write_socket, sentence)
-            write_socket.send(new_sentence.encode())
 
+            if sentence == "dummy!":
+                new_sentence = "dummy!"
+            else:
+                new_sentence = convertmessage(write_socket, sentence)
+            write_socket.send(new_sentence.encode())
             # delete sended message
             del messages[write_socket]
             write_socket_list.remove(write_socket)
@@ -125,6 +131,12 @@ except KeyboardInterrupt:
         conn_socket.close()
     except:
         pass
+
+    for read_socket in read_socket_list:
+        read_socket.close()
+
+    for write_socket in write_socket_list:
+        write_socket.close()
 
     print("server closed!")
     exit()

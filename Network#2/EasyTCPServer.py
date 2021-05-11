@@ -10,7 +10,7 @@ serverSocket = socket(AF_INET, SOCK_STREAM)
 
 try:
     # when server downed even before first connection with client(no connectionsocket)
-    serverSocket.bind(("nsl2.cau.ac.kr", serverPort))
+    serverSocket.bind(("172.30.1.27", serverPort))
     serverSocket.listen(1)
     print("The server is ready to receive on port 24744")
     (connectionSocket, addr) = serverSocket.accept()

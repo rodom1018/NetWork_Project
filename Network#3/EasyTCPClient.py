@@ -1,6 +1,11 @@
 # 20174744 Lee Dong Hyeon
 from socket import *
-import time
+from threading import Thread
+import time, select
+from os import sys
+
+send_message = None
+did_print = 1
 
 
 def intro():
@@ -10,6 +15,11 @@ def intro():
     print("3) get my IP address and  port number")
     print("4) get server running time")
     print("5) exit")
+    print("Input Option ::", end=" ", flush=True)
+
+
+class Inputcheck(Exception):
+    pass
 
 
 serverName = "nsl2.cau.ac.kr"
@@ -26,29 +36,23 @@ except ConnectionRefusedError:
     exit()
 
 while True:
-
-    intro()
-
-    try:
-        send_message = input("Input option: ")
-        experiement_num = (int)(send_message)
-    except KeyboardInterrupt:
-        # if pressed ctrl+c
-        clientSocket.send(" ".encode())
-        print("\n bye bye ~")
-        clientSocket.close()
-        break
-    except ValueError:
-        # input is not int like 'happy'
-        print("you didn't type number ! Try Again ! \n ")
-        clientSocket.send(" ".encode())
-        continue
+    if did_print:
+        intro()
 
     try:
+        clientSocket.send("dummy!".encode())
+        clientSocket.recv(1024)
+        i, o, e = select.select([sys.stdin], [], [], 1)
+        if i:
+            send_message = sys.stdin.readline().rstrip("\n")
+        else:
+            did_print = 0
+            raise Inputcheck
+
         if (int(send_message) > 5) or (int(send_message) < 1):
             # input is not correct number like 7
             print("wrong number ! Try Again! \n")
-            clientSocket.send(" ".encode())
+            did_print = 1
             continue
         elif send_message == "5":
             # when pressed 5
@@ -72,7 +76,26 @@ while True:
 
         print("Reply From Server : ", modifiedSentence.decode())
         print("Response time : {} ms".format(receive_time - send_time))
+        did_print = 1
         print()
+    except Inputcheck:
+        continue
+    except BrokenPipeError:
+        # when executing client , server downed.
+        print("server has suddenly terminated ! bye bye ~")
+        clientSocket.close()
+        break
+    except ValueError:
+        # input is not int like 'happy'
+        print("you didn't type number ! Try Again ! \n ")
+        did_print = 1
+        continue
+    except KeyboardInterrupt:
+        # if pressed ctrl+c
+        clientSocket.send(" ".encode())
+        print("\n bye bye ~")
+        clientSocket.close()
+        break
     except ConnectionResetError:
         # when executing client , server downed.
         print("server has suddenly terminated ! bye bye ~")
