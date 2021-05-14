@@ -3,6 +3,7 @@ from socket import *
 import time
 import threading
 
+version = 0.1
 # if there exists connectionSocket, serverSocket
 def TwoSocketClose(serverSocket, connectionSocket):
     serverSocket.close()
@@ -31,46 +32,55 @@ def handle_client(connectionSocket, addr):
     while True:
         try:
             # when server abruptly downed, this is for closing thread - socket and thread itself.
-            connectionSocket.settimeout(3)
+            """ 이 문장 나중에 원상복구 해야함 .!!!! 
+            connectionSocket.settimeout(3)"""
+
             sentence = connectionSocket.recv(1024).decode()
         except:
             connectionSocket.close()
             exit()
 
-        if sentence == " " or sentence == "5":
+        if sentence == " " or sentence == "5" or sentence =="quit":
             # counter exception when ctrl+c or pressed 5
+            print("<nickname left. There are N users now ")
             connectionSocket.close()
             number_of_client -= 1
             break
 
         if sentence == "dummy!":
-            print("왜 여기 못와 ")
             connectionSocket.send("dummy!".encode())
             continue
-
-        if sentence[0] == "1":
-            # when pressed 1
-            sentence = sentence[1:]
-            capitalizedSentence = sentence.upper()
-            connectionSocket.send(capitalizedSentence.encode())
+        
+        if sentence[0] == "0" :
+            broadcast(sentence[1:], connectionSocket)
+            connectionSocket.send("dummy!".encode())
+        elif sentence[0] == "1":
+            new_sentence = "List of clients info: \n"
+            
+            for client_socket in socket_list:
+                #new_sentence+="<nickname = {}, IP = {} , port = {}>".format(client_nick[client_socket], client_addr[client_socket][0], client_addr[client_socket][1])
+                new_sentence+="<nickname = {}>\n".format(client_nick[client_socket])
+            print("this is new sentence")
+            print(new_sentence)
+            connectionSocket.send(new_sentence.encode())
         elif sentence[0] == "2":
-            # when pressed 2
-            sentence = sentence[1:]
-            ReverseSentence = "".join(reversed(sentence))
-            connectionSocket.send(ReverseSentence.encode())
+            #dmcommand
+            nickname = sentence.split(' ')[1]
+            msg = sentence.split(sep=' ', maxsplit=2)[2]
+            directmessage(msg, nickname)
         elif sentence[0] == "3":
-            # when pressed 3
-            connectionSocket.send(
-                (("client IP={} port={}".format(addr[0], addr[1])).encode())
-            )
+            # ex command
+            nickname = sentence.split(' ')[1]
+            msg = sentence.split(sep=' ', maxsplit=2)[2]
+            exceptmessage(msg, nickname)
         elif sentence[0] == "4":
-            # when pressed 4
-            elapsed_time = (int)(time.time() - start_time)
-            hour = (int)(elapsed_time / 3600)
-            minute = (int)((elapsed_time % 3600) / 60)
-            second = (int)((elapsed_time) % 60)
-            time_sentence = " run time ={}:{}:{}".format(hour, minute, second)
-            connectionSocket.send(time_sentence.encode())
+            # ver command
+            connectionSocket.send("server version is {} , ".format(version).encode())
+        elif sentence[0] == "6":
+            # rtt command
+            sample=connectionSocket.recv(1024)
+            connectionSocket.send("dummy!".encode())
+
     print(
         "Client {} disconnected. Number of connected clients = {}".format(
             my_client_num, number_of_client
@@ -78,16 +88,45 @@ def handle_client(connectionSocket, addr):
     )
 
 socket_list = []
+client_addr={}
+client_nick={}
 
 def remove(connection):
     if connection in socket_list:
         socket_list.remove(connection)
 
-def broadcast(message, connection):
+def broadcast(message, me):
     for clients in socket_list:
-        if clients!=connection:
+        if clients!=me:
             try:
-                clients.send(message)
+                clients.send(message.encode())
+            except:
+                clients.close()
+                remove(clients)
+
+def selfmessage(message, me):
+    for clients in socket_list:
+        if clients==me:
+            try:
+                clients.send(message.encode())
+            except:
+                clients.close()
+                remove(clients)
+
+def directmessage(message, dmperson):
+    for clients in socket_list:
+        if clients==dmperson:
+            try:
+                clients.send(message.encode())
+            except:
+                clients.close()
+                remove(clients)
+
+def exceptmessage(message, me ,experson):
+    for clients in socket_list:
+        if clients != experson and clients != me:
+            try:
+                clients.send(message.encode())
             except:
                 clients.close()
                 remove(clients)
@@ -136,6 +175,8 @@ try:
             temp_socket = connectionSocket
             if(len(socket_list) <8):
                 socket_list.append(temp_socket)
+                client_addr[temp_socket] = addr
+                client_nick[temp_socket] = nickname
             else:
                 connectionSocket.send("chatting room full. cannot connect".encode())
                 connectionSocket.close()

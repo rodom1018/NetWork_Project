@@ -7,15 +7,7 @@ from sys import argv
 send_message = None
 did_print = 1
 
-
-def intro():
-    print("<Menu>")
-    print("1) convert text to UPPER-case")
-    print("2) convert text to reverse order")
-    print("3) get my IP address and  port number")
-    print("4) get server running time")
-    print("5) exit")
-    print("Input Option ::", end=" ", flush=True)
+version = 0.2
 
 def validnickname(nickname):
     if(len(nickname)>32):
@@ -70,8 +62,6 @@ clientSocket.send(nickname.encode())
 welcomemessage= clientSocket.recv(1024)
 print(welcomemessage.decode())
 while True:
-    if did_print:
-        intro()
 
     try:
         
@@ -80,43 +70,63 @@ while True:
         print(sample)
 
 
-        i, o, e = select.select([sys.stdin], [], [], 1)
+        """i, o, e = select.select([sys.stdin], [], [], 1)
         if i:
             send_message = sys.stdin.readline().rstrip("\n")
         else:
-            did_print = 0
-            raise Inputcheck
+            raise Inputcheck"""
 
+        send_message = input()
 
-        if (int(send_message) > 5) or (int(send_message) < 1):
-            # input is not correct number like 7
-            print("wrong number ! Try Again! \n")
-            did_print = 1
-            continue
-        elif send_message == "5":
-            # when pressed 5
+        if(send_message.startswith('/list')):
+            send_message = send_message.replace("/list", "1")
+        elif(send_message.startswith('/dm')):
+            send_message = send_message.replace("/dm", "2")
+        elif(send_message.startswith('/ex')):
+            send_message = send_message.replace("/ex", "3")
+        elif(send_message.startswith('/ver')):
+            send_message = send_message.replace("/ver", "4")
+        elif(send_message.startswith('/quit')):
+            send_message = send_message.replace("/quit", "5")
             clientSocket.send(send_message.encode())
             print("bye bye ~")
             clientSocket.close()
             break
-        elif (send_message == "1") | (send_message == "2"):
-            # when pressed 1,2
-            message = input("Input sentence: ")
-            send_message += message
+        elif(send_message.startswith('/rtt')):
+            send_message = send_message.replace("/rtt", "6")
+
+            send_time = time.time() * 1000.0
+            clientSocket.send("dummy!".encode())
+            sample=clientSocket.recv(1024)
+            receive_time = time.time() * 1000.0
+
+            print("Response time : {} ms".format(receive_time - send_time))
+            print()
+        elif(send_message.startswith('/')):
+            print("wrong command ! try again")
+            continue
+        else:
+            send_message ="0"+send_message
 
         # send to server
-        send_time = time.time() * 1000.0
+        print("this is client message!!!")
+        print(send_message)
         clientSocket.send(send_message.encode())
         modifiedSentence = clientSocket.recv(1024)
-        receive_time = time.time() * 1000.0
+        print(modifiedSentence.decode())
 
         if modifiedSentence.decode() == "":
             raise ConnectionResetError
+        
+        if modifiedSentence.decode() == "dummy!":
+            continue
 
-        print("Reply From Server : ", modifiedSentence.decode())
-        print("Response time : {} ms".format(receive_time - send_time))
-        did_print = 1
-        print()
+        if(send_message.startswith('4')):
+            print(modifiedSentence.decode())
+            print("and client version is {}".format(version))
+        else:
+            print("Reply From Server : ", modifiedSentence.decode())
+            print()
     except Inputcheck:
         continue
     except BrokenPipeError:
@@ -131,8 +141,8 @@ while True:
         continue
     except KeyboardInterrupt:
         # if pressed ctrl+c
-        clientSocket.send(" ".encode())
-        print("\n bye bye ~")
+        clientSocket.send("quit".encode())
+        print("\n gg~")
         clientSocket.close()
         break
     except ConnectionResetError:
