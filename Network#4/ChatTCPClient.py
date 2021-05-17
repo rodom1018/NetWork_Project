@@ -30,7 +30,8 @@ class Inputcheck(Exception):
 serverName = "nsl2.cau.ac.kr"
 serverPort = 24744
 server_address = (serverName, serverPort)
-
+# to catch less / more sys.argv
+# like python Client.py(no nickname)
 if len(sys.argv) < 2:
     print("please input nickname!")
     exit()
@@ -41,6 +42,7 @@ if len(sys.argv) > 2:
 
 nickname = sys.argv[1]
 
+# check whether nickname is valid.
 if validnickname(nickname) == False:
     print("invalid format of nickname")
     exit()
@@ -57,12 +59,10 @@ except ConnectionRefusedError:
 
 clientSocket.send(nickname.encode())
 welcomemessage = clientSocket.recv(1024).decode()
-if welcomemessage == "chatting room full. cannot connect":
-    print(welcomemessage)
-    clientSocket.close()
-    exit()
-
-if welcomemessage == "that nickname is already used by another user. cannot connect":
+if (
+    welcomemessage == "chatting room full. cannot connect"
+    or welcomemessage == "that nickname is already used by another user. cannot connect"
+):
     print(welcomemessage)
     clientSocket.close()
     exit()
@@ -78,28 +78,31 @@ while True:
         if sample != "dummy!":
             sample = sample.replace("dummy!", "")
             print(sample)
+            print()
         i, o, e = select.select([sys.stdin], [], [], 1)
         if i:
             send_message = sys.stdin.readline().rstrip("\n")
         else:
             raise Inputcheck
 
-        if send_message.startswith("/list"):
-            send_message = send_message.replace("/list", "1")
-        elif send_message.startswith("/dm"):
-            send_message = send_message.replace("/dm", "2")
-        elif send_message.startswith("/ex"):
-            send_message = send_message.replace("/ex", "3")
-        elif send_message.startswith("/ver"):
-            send_message = send_message.replace("/ver", "4")
-        elif send_message.startswith("/quit"):
-            send_message = send_message.replace("/quit", "5")
+        # encode into some binary data(plain -> binary data)
+        if send_message.startswith("\list"):
+            send_message = send_message.replace("\list", "1")
+        elif send_message.startswith("\dm"):
+            send_message = send_message.replace("\dm", "2")
+        elif send_message.startswith("\ex"):
+            send_message = send_message.replace("\ex", "3")
+        elif send_message.startswith("\\ver"):
+            send_message = send_message.replace("\\ver", "4")
+        elif send_message.startswith("\quit"):
+            send_message = send_message.replace("\quit", "5")
             clientSocket.send(send_message.encode())
             print("gg~")
             clientSocket.close()
             break
-        elif send_message.startswith("/rtt"):
-            send_message = send_message.replace("/rtt", "6")
+        elif send_message.startswith("\\rtt"):
+            # \rtt
+            send_message = send_message.replace("\\rtt", "6")
 
             send_time = time.time() * 1000.0
             clientSocket.send("dummy!".encode())
@@ -108,9 +111,9 @@ while True:
 
             print("Response time : {} ms".format(receive_time - send_time))
             print()
-        elif send_message.startswith("/update"):
-            send_message = send_message.replace("/update", "7")
-        elif send_message.startswith("/"):
+        elif send_message.startswith("\date"):
+            send_message = send_message.replace("\date", "7")
+        elif send_message.startswith("\\"):
             print("invalid commnad")
             continue
         else:
@@ -120,18 +123,25 @@ while True:
         clientSocket.send(send_message.encode())
         modifiedSentence = clientSocket.recv(1024)
 
-        if modifiedSentence.decode() == "":
-            raise ConnectionResetError
-
-        if send_message.startswith("4"):
-            print(modifiedSentence.decode().replace("dummy", ""))
-            print("client version is {}".format(version))
-        else:
-            print(modifiedSentence.decode())
-            print()
+        if modifiedSentence.decode() == "you hate professor?":
+            # catched by server "i hate professor"
+            print(modifiedSentence.decode() + "gg ~ ")
+            clientSocket.close()
+            exit()
 
         if modifiedSentence.decode() == "dummy!":
             continue
+
+        if send_message.startswith("4"):
+            # /ver
+            print(
+                modifiedSentence.decode().replace("dummy", " ")
+                + "    client version is {}".format(version)
+            )
+            print()
+        else:
+            print(modifiedSentence.decode())
+            print()
     except Inputcheck:
         continue
     except BrokenPipeError:
@@ -139,11 +149,6 @@ while True:
         print("server has suddenly terminated ! bye bye ~")
         clientSocket.close()
         break
-    except ValueError:
-        # input is not int like 'happy'
-        print("you didn't type number ! Try Again ! \n ")
-        did_print = 1
-        continue
     except KeyboardInterrupt:
         # if pressed ctrl+c
         clientSocket.send("5".encode())

@@ -4,6 +4,12 @@ import time
 import threading
 
 version = 0.1
+socket_list = []
+client_addr = {}
+client_nick = {}
+flag = 1
+exist = 0
+nicknameflag = 1
 # if there exists connectionSocket, serverSocket
 def TwoSocketClose(serverSocket, connectionSocket):
     serverSocket.close()
@@ -17,7 +23,62 @@ def OneSocketClose(ServerSocket):
     print("server closed!")
 
 
-# thread function.
+def remove(connection):
+    if connection in socket_list:
+        socket_list.remove(connection)
+
+
+def broadcast(message, me):
+    # broadcast to all users.
+    for clients in socket_list:
+        if clients != me:
+            try:
+                clients.send(message.encode())
+            except:
+                clients.close()
+                remove(clients)
+
+
+def directmessage(message, dmperson):
+    # /dm
+    for client in socket_list:
+        if client_nick[client] == dmperson:
+            try:
+                client.send(message.encode())
+            except:
+                client.close()
+                remove(client)
+
+
+def exceptmessage(message, me, experson):
+    # /ex
+    for client in socket_list:
+        if client_nick[client] != experson and client_nick[client] != me:
+            try:
+                client.send(message.encode())
+            except:
+                client.close()
+                remove(client)
+
+
+def exist(nickname):
+    # catch invalid /dm /ex with incorrect nickname
+    # ex. /dm do you like me?
+    for socket in socket_list:
+        if client_nick[socket] == nickname:
+            exist = 1
+
+    if exist == 0:
+        connectionSocket.send("invalid command".encode())
+        return 0
+
+    exist = 0
+    return 1
+
+
+############################
+#### thread function ! ####
+############################
 def handle_client(connectionSocket, addr):
     global number_of_client
     global totalnum_client
@@ -39,8 +100,9 @@ def handle_client(connectionSocket, addr):
             connectionSocket.send("dummy!".encode())
             continue
 
+        # exit, or find i hate professor
         temp_sentence = sentence.lower()
-        if sentence == "5" or "i hate professor" in temp_sentence:
+        if sentence == "5" in temp_sentence:
             # counter exception when ctrl+c or pressed 5
             print(
                 "<{}> left. There are <{}> users now ".format(
@@ -61,10 +123,36 @@ def handle_client(connectionSocket, addr):
             number_of_client -= 1
             break
 
+        if "i hate professor" in temp_sentence:
+            # hate professor!
+            connectionSocket.send("you hate professor?".encode())
+
+            print(
+                "<{}> left because that guy hates professor. There are <{}> users now ".format(
+                    client_nick[connectionSocket], number_of_client - 1
+                )
+            )
+            broadcast(
+                "<{}> left because that guy hates professor. There are <{}> users now ".format(
+                    client_nick[connectionSocket], number_of_client - 1
+                ),
+                connectionSocket,
+            )
+            socket_list.remove(connectionSocket)
+            del client_addr[connectionSocket]
+            del client_nick[connectionSocket]
+
+            connectionSocket.close()
+            number_of_client -= 1
+            break
+
         if sentence[0] == "0":
-            broadcast(sentence[1:], connectionSocket)
+            # broadcast
+            sentence = my_nick + " > " + sentence[1:] + "\n"
+            broadcast(sentence, connectionSocket)
             connectionSocket.send("dummy!".encode())
         elif sentence[0] == "1":
+            # /list
             new_sentence = "List of clients info: \n"
 
             for client_socket in socket_list:
@@ -77,14 +165,30 @@ def handle_client(connectionSocket, addr):
             connectionSocket.send(new_sentence.encode())
         elif sentence[0] == "2":
             # dmcommand
-            nickname = sentence.split(" ")[1]
-            msg = sentence.split(sep=" ", maxsplit=2)[2]
+            try:
+                nickname = sentence.split(" ")[1]
+                msg = sentence.split(sep=" ", maxsplit=2)[2]
+                msg = "from: " + my_nick + " > " + msg + "\n"
+
+                if exist(nickname) == 0:
+                    continue
+            except:
+                connectionSocket.send("invalid command".encode())
+                continue
             directmessage(msg, nickname)
             connectionSocket.send("dummy!".encode())
         elif sentence[0] == "3":
             # ex command
-            nickname = sentence.split(" ")[1]
-            msg = sentence.split(sep=" ", maxsplit=2)[2]
+            try:
+                nickname = sentence.split(" ")[1]
+                msg = sentence.split(sep=" ", maxsplit=2)[2]
+                msg = my_nick + " > " + msg + "\n"
+
+                if exist(nickname) == 0:
+                    continue
+            except:
+                connectionSocket.send("invalid command".encode())
+                continue
             exceptmessage(msg, my_nick, nickname)
             connectionSocket.send("dummy!".encode())
         elif sentence[0] == "4":
@@ -95,48 +199,7 @@ def handle_client(connectionSocket, addr):
             connectionSocket.send("dummy!".encode())
         else:
             print("invalid command")
-            connectionSocket.send("dummy!".encode())
-
-
-socket_list = []
-client_addr = {}
-client_nick = {}
-
-
-def remove(connection):
-    if connection in socket_list:
-        socket_list.remove(connection)
-
-
-def broadcast(message, me):
-    for clients in socket_list:
-        if clients != me:
-            try:
-                print(message)
-                clients.send(message.encode())
-            except:
-                clients.close()
-                remove(clients)
-
-
-def directmessage(message, dmperson):
-    for client in socket_list:
-        if client_nick[client] == dmperson:
-            try:
-                client.send(message.encode())
-            except:
-                client.close()
-                remove(client)
-
-
-def exceptmessage(message, me, experson):
-    for client in socket_list:
-        if client_nick[client] != experson and client_nick[client] != me:
-            try:
-                client.send(message.encode())
-            except:
-                client.close()
-                remove(client)
+            connectionSocket.send("invalid command".encode())
 
 
 ############################
@@ -164,15 +227,15 @@ except KeyboardInterrupt:
     # pressed ctrl+c
     OneSocketClose(serverSocket)
 
-flag = 1
-nicknameflag = 1
 try:
     while True:
         try:
             (connectionSocket, addr) = serverSocket.accept()
+            flag = 0
             nickname = connectionSocket.recv(1024).decode()
             if len(socket_list) < 8:
                 for socket in socket_list:
+                    # duplicate nickname
                     if client_nick[socket] == nickname:
                         connectionSocket.send(
                             "that nickname is already used by another user. cannot connect".encode()
@@ -183,13 +246,15 @@ try:
                     nicknameflag = 1
                     continue
                 temp_socket = connectionSocket
+
+                # add new client info.
                 socket_list.append(temp_socket)
                 client_addr[temp_socket] = addr
                 client_nick[temp_socket] = nickname
 
                 connectionSocket.send(
                     "welcome <{}> to CAU network class chat room at <{}, {}>. You are <{}>th user".format(
-                        nickname, "165.194.35.202", serverPort, totalnum_client + 1
+                        nickname, "165.194.35.202", serverPort, number_of_client + 1
                     ).encode()
                 )
                 print(
@@ -198,6 +263,7 @@ try:
                     )
                 )
             else:
+                # chatting room is full
                 connectionSocket.send("chatting room full. cannot connect".encode())
                 connectionSocket.close()
                 continue
@@ -205,7 +271,6 @@ try:
         except timeout:
             continue
 
-        flag = 0
         thread = threading.Thread(target=handle_client, args=(connectionSocket, addr))
         thread.start()
 except KeyboardInterrupt:
