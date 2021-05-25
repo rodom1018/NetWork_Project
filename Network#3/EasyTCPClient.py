@@ -22,7 +22,7 @@ class Inputcheck(Exception):
     pass
 
 
-serverName = "nsl2.cau.ac.kr"
+serverName = "172.30.1.27"
 serverPort = 24744
 server_address = (serverName, serverPort)
 

@@ -97,7 +97,7 @@ serverSocket.settimeout(0.5)
 
 try:
     # when server downed even before first connection with client(no connectionsocket)
-    serverSocket.bind(("nsl2.cau.ac.kr", serverPort))
+    serverSocket.bind(("172.30.1.27", serverPort))
     serverSocket.listen(1)
     print("The server is ready to receive on port 24744")
 except KeyboardInterrupt:

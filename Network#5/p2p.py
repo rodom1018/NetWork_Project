@@ -4,29 +4,24 @@ import threading
 address = "nsl5.cau.ac.kr"
 ports = [24744, 34744, 44744, 54744]
 totalstate = 0
-me = 5
-serverPort = [0, 0]
+sequencenum = 0
+LeftRightPort = [0, 0]
 
 
-def det_serverport(portnum):
-    serverPort = [0, 0]
+def det_LeftRightPort(portnum):
     temp_port = int(portnum)
     if temp_port == ports[0]:
-        serverPort[0] = ports[3]
-        serverPort[1] = ports[1]
-        me = 0
+        LeftRightPort[0] = ports[3]
+        LeftRightPort[1] = ports[1]
     elif temp_port == ports[1]:
-        serverPort[0] = ports[0]
-        serverPort[1] = ports[2]
-        me = 1
+        LeftRightPort[0] = ports[0]
+        LeftRightPort[1] = ports[2]
     elif temp_port == ports[2]:
-        serverPort[0] = ports[1]
-        serverPort[1] = ports[3]
-        me = 2
+        LeftRightPort[0] = ports[1]
+        LeftRightPort[1] = ports[3]
     elif temp_port == ports[3]:
-        serverPort[0] = ports[2]
-        serverPort[1] = ports[0]
-        me = 3
+        LeftRightPort[0] = ports[2]
+        LeftRightPort[1] = ports[0]
 
 
 class Server(threading.Thread):
@@ -36,6 +31,7 @@ class Server(threading.Thread):
         self.port = port
 
     def run(self):
+        global totalstate
         serverSocket = socket(AF_INET, SOCK_DGRAM)
         serverPort = int(self.port)
         serverSocket.bind((address, serverPort))
@@ -43,11 +39,15 @@ class Server(threading.Thread):
 
         while True:
             (message, clientAddress) = serverSocket.recvfrom(2048)
-            if message.decode() == "connect":
-                serverSocket.sendto("connect!".encode, clientAddress)
-                if clientAddress[1] == serverPort[0]:
+            welcome_message = message.decode()
+            source_port = 0
+            if welcome_message.startswith("connect"):
+                serverSocket.sendto("connect!".encode(), clientAddress)
+                welcome_message = welcome_message.replace("connect", "")
+                source_port = int(welcome_message)
+                if source_port == LeftRightPort[0]:
                     totalstate += 10
-                elif clientAddress[1] == serverPort[1]:
+                elif source_port == LeftRightPort[1]:
                     totalstate += 1
             else:
                 print(message.decode())
@@ -61,17 +61,18 @@ class Client(threading.Thread):
         self.port = port
 
     def run(self):
+        global totalstate
         state = 11
         timeout = 2
         Left_clientSocket = socket(AF_INET, SOCK_DGRAM)
         Left_clientSocket.settimeout(timeout)
         Right_clientSocket = socket(AF_INET, SOCK_DGRAM)
         Right_clientSocket.settimeout(timeout)
-        serverPort = self.det_serverport()
 
+        message = "connect" + self.port
         try:
             print("please wait. Try to Establish connection (left side)")
-            Left_clientSocket.sendto("connect".encode(), (address, int(serverPort[0])))
+            Left_clientSocket.sendto(message.encode(), (address, LeftRightPort[0]))
             Left_clientSocket.recv(2048)
             print("Established connection! (left side)")
         except OSError as e:
@@ -81,7 +82,7 @@ class Client(threading.Thread):
 
         try:
             print("please wait. Try to Establish connection (right side)")
-            Right_clientSocket.sendto("connect".encode(), (address, int(serverPort[1])))
+            Right_clientSocket.sendto(message.encode(), (address, LeftRightPort[1]))
             Right_clientSocket.recv(2048)
             print("Established connection!(right side)")
         except OSError as e:
@@ -93,26 +94,28 @@ class Client(threading.Thread):
         while True:
             if state == 0:
                 break
-            elif state == 11:
-                send_message = input("input >>>")
+
+            send_message = input("input >>>")
+            sequencenum += 1
+
+            if state == 11:
                 Left_clientSocket.sendto(
-                    send_message.encode(), (address, int(serverPort[0]))
+                    send_message.encode(), (address, int(LeftRightPort[0]))
                 )
                 Left_clientSocket.recvfrom(2048)
 
                 Right_clientSocket.sendto(
-                    send_message.encode(), (address, int(serverPort[1]))
+                    send_message.encode(), (address, int(LeftRightPort[1]))
                 )
                 Right_clientSocket.recvfrom(2048)
             elif state == 10:
-                send_message = input("input >>>")
                 Left_clientSocket.sendto(
-                    send_message.encode(), (address, int(serverPort[0]))
+                    send_message.encode(), (address, int(LeftRightPort[0]))
                 )
                 Left_clientSocket.recvfrom(2048)
             elif state == 1:
                 Right_clientSocket.sendto(
-                    send_message.encode(), (address, int(serverPort[1]))
+                    send_message.encode(), (address, int(LeftRightPort[1]))
                 )
                 Right_clientSocket.recvfrom(2048)
 
@@ -122,7 +125,7 @@ class Client(threading.Thread):
 ######################################
 
 port = input("input your port num!")
-det_serverport(port)
+det_LeftRightPort(int(port))
 
 server = Server(address, port)
 server.start()

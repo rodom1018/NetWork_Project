@@ -44,7 +44,7 @@ my_client_num = 0
 
 # initial settings
 serverSocket = socket(AF_INET, SOCK_STREAM)
-serverSocket.bind(("nsl2.cau.ac.kr", serverPort))
+serverSocket.bind(("172.30.1.27", serverPort))
 serverSocket.listen(1)
 print("The server is ready to receive on port 24744")
 temporary_socket = socket(AF_INET, SOCK_STREAM)
